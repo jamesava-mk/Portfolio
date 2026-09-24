@@ -1,258 +1,272 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X } from "lucide-react";
-import { navigationItems, siteBrand } from "../../data/navigation";
-import { socialLinks } from "../../data/socials";
+import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowUpRight, Menu, X } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 
-// Pixel threshold after which the navbar switches from transparent to the
-// "scrolled" glass state. Pulled out as a constant so it's easy to tune.
-const SCROLL_THRESHOLD = 24;
+const navigation = [
+  {
+    label: "HOME",
+    short: "H",
+    path: "/",
+    width: 72,
+  },
+  {
+    label: "WORK",
+    short: "W",
+    path: "/work",
+    width: 68,
+  },
+  {
+    label: "JOURNEY",
+    short: "J",
+    path: "/journey",
+    width: 88,
+  },
+  {
+    label: "CONTACT",
+    short: "C",
+    path: "/contact",
+    width: 82,
+  },
+];
 
-/**
- * Navbar
- *
- * A sticky, glassmorphism site navigation bar.
- *
- * - Transparent + unblurred at the top of the page.
- * - Gains a dark, blurred glass background once the user scrolls past
- *   SCROLL_THRESHOLD, with an animated transition between states.
- * - Centered nav links with a sliding active-link indicator.
- * - Right-aligned social icons.
- * - Fully accessible mobile hamburger menu.
- *
- * Self-contained: manages its own scroll listener, active-section tracking,
- * and mobile menu state. Drop it at the top of any page — no props required
- * — but NAV_LINKS / SOCIAL_LINKS above can be swapped for props if the
- * component needs to be reused across projects with different content.
- */
+const boxType = "font-['Space_Grotesk',sans-serif]";
+
 export default function Navbar() {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [activeHref, setActiveHref] = useState(navigationItems[0]?.href ?? '#about');
-  const [hoveredHref, setHoveredHref] = useState(null);
+  const location = useLocation();
+  const [open, setOpen] = useState(false);
+  const [hovered, setHovered] = useState(null);
 
-  // ---------------------------------------------------------------------
-  // Scroll handling: toggles the glass background and (roughly) tracks
-  // which section is currently in view so the active indicator follows
-  // real scroll position, not just clicks.
-  // ---------------------------------------------------------------------
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > SCROLL_THRESHOLD);
+  const isActive = (path) => {
+    if (path === "/") {
+      return location.pathname === "/";
+    }
 
-      // Determine active section by finding the last section whose top
-      // has scrolled above the middle of the viewport. This is a cheap,
-      // dependency-free alternative to IntersectionObserver that works
-      // fine for a handful of top-level sections like these.
-      const scrollPosition = window.scrollY + window.innerHeight / 3;
-      let current = navigationItems[0]?.href ?? '#about';
+    if (path === "/work") {
+      return (
+        location.pathname === "/work" ||
+        location.pathname.startsWith("/work/")
+      );
+    }
 
-      for (const link of navigationItems) {
-        const section = document.querySelector(link.href);
-        if (section && section.offsetTop <= scrollPosition) {
-          current = link.href;
-        }
-      }
-      setActiveHref(current);
-    };
+    return location.pathname === path;
+  };
 
-    handleScroll(); // set correct initial state on mount (e.g. deep link/refresh)
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  // Smooth-scroll to a section and close the mobile menu on navigation.
-  // useCallback so the handler identity is stable across re-renders when
-  // passed down to mapped children.
-  const handleNavClick = useCallback((e, href) => {
-    e.preventDefault();
-    const target = document.querySelector(href);
-    if (target) {
-      const navbarOffset = 80;
-      const targetPosition = 
-      target.getBoundingClientRect().top +
-      window.scrollY -
-      navbarOffset;
-
-    setIsMobileOpen(false);
-    setActiveHref(href);
-
-    requestAnimationFrame(() => {
-      window.scrollTo({
-        top: targetPosition,
-        behavior: "smooth",
-      });
-    });
-  } else {
-    console.warn(`Navigation target not found: "${href}"`);
-    setisMobileOpen(false);
-  }
-  }, []);
+  const closeMenu = () => {
+    setOpen(false);
+  };
 
   return (
-    <motion.header
-      // Entrance animation: nav drops in from above on initial mount.
-      initial={{ y: -80, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      className="fixed top-4 left-1/2 -translate-x-1/2 w-[92%] max-w-6xl z-50"
-    >
-      {/*
-        Glass background layer is separate from the content layer so we can
-        animate background/blur/border independently without affecting the
-        layout of the logo/links/icons above it.
-      */}
-      <motion.div
-        animate={{
-          backgroundColor: isScrolled
-            ? "rgba(5, 7, 12, 0.78)"
-            : "rgba(5, 7, 12, 0.35)",
-          backdropFilter: isScrolled ? "blur(16px)" : "blur(4px)",
-          borderBottomColor: isScrolled
-            ? "rgba(255, 255, 255, 0.08)"
-            : "rgba(255, 255, 255, 0)",
-        }}
-        transition={{ duration: 0.4, ease: "easeInOut" }}
-        style={{ WebkitBackdropFilter: isScrolled ? "blur(16px)" : "blur(4px)" }}
-        className="rounded-2xl border border-white/0 shadow-lg shadow-black/10 overflow-hidden"
+    <header className="fixed left-0 right-0 top-0 z-50 px-4 pt-4 sm:px-6 lg:px-8">
+      <nav
+        className={`${boxType} mx-auto flex h-14 max-w-[1500px] items-center justify-between border border-white/[0.09] bg-[#08090b]/75 px-4 backdrop-blur-xl sm:px-5`}
       >
-        <nav className="mx-auto px-5 lg:px-6">
-          <div className="flex h-14 items-center justify-between lg:grid lg:grid-cols-3">
-            {/* ---------------- Logo (left) ---------------- */}
-            <a
-                href="#home"
-                onClick={(e) => handleNavClick(e, "#home")}
-                className="
-                shrink-0
-                text-sm
-                font-semibold
-                tracking-[0.15em]
-                text-white
-  "
->
-  {siteBrand}
-</a>
+        {/* Secret admin gateway */}
+        <Link
+          to="/admin/dashboard"
+          onClick={closeMenu}
+          aria-label="James"
+          title="James"
+          className="group flex shrink-0 items-center gap-3"
+        >
+          <span className="flex h-8 w-8 items-center justify-center border border-white/20 text-[11px] font-semibold tracking-[-0.06em] text-white/85 transition-all duration-300 group-hover:border-white/45 group-hover:bg-white group-hover:text-black">
+            J
+          </span>
 
-            {/* ---------------- Desktop links (center) ---------------- */}
-            <ul className="hidden lg:flex items-center justify-center gap-6">
-              {navigationItems.map((link) => {
-                const isActive = activeHref === link.href;
-                return (
-                  <li key={link.href} className="relative">
-                    <a
-                      href={link.href}
-                      onClick={(e) => handleNavClick(e, link.href)}
-                      onMouseEnter={() => setHoveredHref(link.href)}
-                      onMouseLeave={() => setHoveredHref(null)}
-                      className={`relative whitespace-nowrap py-2 text-[13px] font-medium tracking-wide transition-colors ${
-                        isActive
-                          ? "text-white"
-                          : "text-gray-300 hover:text-white"
-                      }`}
-                    >
-                      {link.label}
-                      {/*
-                        Active indicator: a layoutId lets Framer Motion
-                        automatically animate this element sliding between
-                        links whenever `isActive` moves to a new <li>,
-                        instead of us hand-coding position math.
-                      */}
-                      {hoveredHref == link.href && (
-                        <motion.span
-                          layoutId="nav-active-indicator"
-                          className="absolute left-0 right-0 -bottom-1 h-[2px] rounded-full bg-indigo-400 shadow-[0_0_10px_rgba(129,140,248,0.7)]"
-                          transition={{
-                            type: "spring",
-                            stiffness: 380,
-                            damping: 30,
-                          }}
-                        />
-                      )}
-                    </a>
-                  </li>
-                );
-              })}
-            </ul>
+          <span className="hidden text-[10px] font-medium uppercase tracking-[0.2em] text-white/45 transition-colors duration-300 group-hover:text-white sm:block">
+            James
+          </span>
+        </Link>
 
-            {/* ---------------- Social icons (right) + mobile trigger ---------------- */}
-            <div className="flex items-center justify-end gap-2">
-              <div className="hidden lg:flex items-center gap-1">
-                {socialLinks.filter((item) => item.href).map(({ label, href, icon: Icon }) => (
-                  <a
-                    key={label}
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={label}
-                    className="p-2 rounded-full text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
-                  >
-                    <Icon size={18} strokeWidth={1.75} />
-                  </a>
-                ))}
-              </div>
+        {/* Desktop navigation */}
+        <div className="hidden items-center gap-1 md:flex">
+          {navigation.map((item, index) => {
+            const active = isActive(item.path);
+            const isHovered = hovered === index;
 
-              {/* Hamburger — mobile only */}
-              <button
-                type="button"
-                onClick={() => setIsMobileOpen((prev) => !prev)}
-                aria-label={isMobileOpen ? "Close menu" : "Open menu"}
-                aria-expanded={isMobileOpen}
-                className="lg:hidden p-2 -mr-2 rounded-md text-white hover:bg-white/10 transition-colors"
+            return (
+              <motion.div
+                key={item.path}
+                initial={false}
+                animate={{
+                  width: isHovered ? item.width : 38,
+                }}
+                transition={{
+                  duration: 0.32,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+                onHoverStart={() => setHovered(index)}
+                onHoverEnd={() => setHovered(null)}
+                className="relative h-9"
               >
-                {isMobileOpen ? <X size={22} /> : <Menu size={22} />}
-              </button>
-            </div>
-          </div>
-        </nav>
-      </motion.div>
+                <Link
+                  to={item.path}
+                  aria-label={item.label}
+                  className={`relative flex h-full w-full items-center justify-center overflow-hidden border transition-colors duration-300 ${
+                    active
+                      ? "border-white/20 bg-white/[0.07] text-white"
+                      : "border-white/[0.08] text-white/55 hover:border-white/20 hover:bg-white/[0.035] hover:text-white"
+                  }`}
+                >
+                  {/* Letter */}
+                  <motion.span
+                    initial={false}
+                    animate={{
+                      opacity: isHovered ? 0 : 1,
+                      scale: isHovered ? 0.82 : 1,
+                      x: isHovered ? -8 : 0,
+                    }}
+                    transition={{
+                      duration: 0.2,
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
+                    className="absolute left-0 flex h-full w-[38px] items-center justify-center text-[11px] font-bold tracking-[-0.03em]"
+                  >
+                    {item.short}
+                  </motion.span>
 
-      {/* ---------------- Mobile menu overlay ---------------- */}
-      <AnimatePresence>
-        {isMobileOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="lg:hidden overflow-hidden bg-[rgba(5,7,12,0.96)] backdrop-blur-xl border-b border-white/10"
+                  {/* Expanded label */}
+                  <motion.span
+                    initial={false}
+                    animate={{
+                      opacity: isHovered ? 1 : 0,
+                      x: isHovered ? 0 : 9,
+                    }}
+                    transition={{
+                      duration: 0.22,
+                      delay: isHovered ? 0.04 : 0,
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
+                    className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.16em]"
+                  >
+                    {item.label}
+                  </motion.span>
+
+                  {/* Active line */}
+                  {active && (
+                    <motion.span
+                      layoutId="navbar-active"
+                      className="absolute bottom-0 left-2 right-2 h-px bg-white/75"
+                      transition={{
+                        type: "spring",
+                        stiffness: 500,
+                        damping: 35,
+                      }}
+                    />
+                  )}
+                </Link>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* Desktop right side */}
+        <div className="hidden items-center md:flex">
+          <Link
+            to="/contact"
+            className="group flex h-9 items-center gap-2 border border-white/[0.09] px-3 text-[8px] font-medium uppercase tracking-[0.18em] text-white/40 transition-all duration-300 hover:border-white/20 hover:bg-white/[0.035] hover:text-white"
           >
-            <ul className="flex flex-col px-6 py-4 gap-1">
-              {navigationItems.map((link) => (
-                <li key={link.href}>
-                  <a
-                    href={link.href}
-                    onClick={(e) => handleNavClick(e, link.href)}
-                    className={`block py-3 text-sm font-medium transition-colors ${
-                      activeHref === link.href
-                        ? "text-white"
-                        : "text-gray-300 hover:text-white"
+            <span>Let's talk</span>
+
+            <ArrowUpRight
+              size={12}
+              strokeWidth={1.3}
+              className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+            />
+          </Link>
+        </div>
+
+        {/* Mobile menu */}
+        <button
+          type="button"
+          onClick={() => setOpen((current) => !current)}
+          aria-label={open ? "Close menu" : "Open menu"}
+          aria-expanded={open}
+          className="flex h-9 w-9 items-center justify-center border border-white/[0.09] text-white/55 transition hover:border-white/25 hover:text-white md:hidden"
+        >
+          {open ? <X size={17} /> : <Menu size={17} />}
+        </button>
+      </nav>
+
+      {/* Mobile navigation */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{
+              opacity: 0,
+              y: -8,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            exit={{
+              opacity: 0,
+              y: -8,
+            }}
+            transition={{
+              duration: 0.22,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+            className="mx-auto mt-2 max-w-[1500px] border border-white/[0.09] bg-[#08090b]/95 p-3 backdrop-blur-xl md:hidden"
+          >
+            <div className="border border-white/[0.05]">
+              {navigation.map((item) => {
+                const active = isActive(item.path);
+
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={closeMenu}
+                    className={`flex items-center justify-between border-b border-white/[0.05] px-4 py-5 last:border-b-0 ${
+                      active ? "text-white" : "text-white/45"
                     }`}
                   >
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
+                    <div className="flex items-center gap-4">
+                      <span className="flex h-7 w-7 items-center justify-center border border-white/10 text-[10px] font-bold tracking-[0.08em] text-white/40">
+                        {item.short}
+                      </span>
 
-            {/* Social icons repeated inside the mobile drawer so they're
-                reachable without needing the (hidden) desktop row. */}
-            <div className="flex items-center gap-2 px-6 pb-6 pt-2 border-t border-white/10">
-              {socialLinks.map(({ label, href, icon: Icon }) => (
-                <a
-                  key={label}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={label}
-                  className="p-2 rounded-full text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
-                >
-                  <Icon size={20} strokeWidth={1.75} />
-                </a>
-              ))}
+                      <span className="text-xs font-semibold uppercase tracking-[0.18em]">
+                        {item.label}
+                      </span>
+                    </div>
+
+                    <ArrowUpRight
+                      size={14}
+                      className={
+                        active ? "text-white/60" : "text-white/20"
+                      }
+                    />
+                  </Link>
+                );
+              })}
+
+              <Link
+                to="/contact"
+                onClick={closeMenu}
+                className="mt-3 flex items-center justify-between bg-white px-4 py-4 text-black"
+              >
+                <span className="text-[9px] font-semibold uppercase tracking-[0.2em]">
+                  Start a conversation
+                </span>
+
+                <ArrowUpRight size={15} />
+              </Link>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between px-1 py-1 text-[8px] font-medium uppercase tracking-[0.18em] text-white/25">
+              <span>J / 2026</span>
+
+              <span className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                Building
+              </span>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.header>
+    </header>
   );
 }
