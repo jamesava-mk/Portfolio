@@ -163,6 +163,9 @@ export default function Journey() {
   const wheelBufferRef = useRef(0);
   const wheelResetRef = useRef(null);
 
+  const touchStartRef = useRef(null);
+  const touchTriggeredRef = useRef(false);
+
   const chapterRef = useRef(0);
   const transitionRef = useRef(false);
   const rotationRef = useRef(0);
@@ -185,9 +188,6 @@ export default function Journey() {
 
     const globe = visual.querySelector(
       '.journey-globe-rotation',
-    );
-    const orbit = visual.querySelector(
-      '.journey-transition-orbit',
     );
     const markers = gsap.utils.toArray(
       visual.querySelectorAll('.journey-location-marker'),
@@ -510,6 +510,10 @@ export default function Journey() {
     }
   };
 
+  /*
+   * Desktop interaction:
+   * scrolling over the active globe changes chapters.
+   */
   useEffect(() => {
     const zone = globeZoneRef.current;
 
@@ -561,6 +565,162 @@ export default function Journey() {
     return () => {
       zone.removeEventListener('wheel', handleWheel);
       window.clearTimeout(wheelResetRef.current);
+    };
+  }, [globeHovered]);
+
+  /*
+   * Mobile interaction:
+   * use the globe as a vertical swipe surface.
+   *
+   * Unlike the old touchend-only version, this triggers once
+   * the swipe actually crosses the threshold. This makes the
+   * interaction feel much closer to the desktop wheel gesture
+   * and prevents the browser's normal vertical page scroll
+   * from swallowing the gesture before the chapter changes.
+   */
+  useEffect(() => {
+    const zone = globeZoneRef.current;
+
+    if (!zone) return undefined;
+
+    const handleTouchStart = (event) => {
+      if (
+        transitionRef.current ||
+        event.touches.length !== 1
+      ) {
+        touchStartRef.current = null;
+        touchTriggeredRef.current = false;
+        return;
+      }
+
+      const touch = event.touches[0];
+
+      touchStartRef.current = {
+        x: touch.clientX,
+        y: touch.clientY,
+      };
+
+      touchTriggeredRef.current = false;
+    };
+
+    const handleTouchMove = (event) => {
+      if (
+        !touchStartRef.current ||
+        touchTriggeredRef.current ||
+        transitionRef.current ||
+        event.touches.length !== 1
+      ) {
+        return;
+      }
+
+      const touch = event.touches[0];
+
+      const deltaX =
+        touch.clientX - touchStartRef.current.x;
+      const deltaY =
+        touch.clientY - touchStartRef.current.y;
+
+      const minimumSwipe = 45;
+
+      if (
+        Math.abs(deltaY) < minimumSwipe ||
+        Math.abs(deltaY) < Math.abs(deltaX) * 1.15
+      ) {
+        return;
+      }
+
+      const direction = deltaY < 0 ? 1 : -1;
+      const next = chapterRef.current + direction;
+
+      /*
+       * At the first/last chapter, allow the page to keep
+       * scrolling normally instead of trapping the user.
+       */
+      if (
+        next < 0 ||
+        next >= CHAPTERS.length
+      ) {
+        touchTriggeredRef.current = true;
+        return;
+      }
+
+      /*
+       * We only prevent the browser's native page scroll once
+       * we know this is an intentional chapter swipe.
+       */
+      event.preventDefault();
+      event.stopPropagation();
+
+      touchTriggeredRef.current = true;
+
+      changeChapter(next);
+    };
+
+    const handleTouchEnd = () => {
+      touchStartRef.current = null;
+      touchTriggeredRef.current = false;
+    };
+
+    const handleTouchCancel = () => {
+      touchStartRef.current = null;
+      touchTriggeredRef.current = false;
+    };
+
+    zone.addEventListener(
+      'touchstart',
+      handleTouchStart,
+      {
+        passive: true,
+      },
+    );
+
+    zone.addEventListener(
+      'touchmove',
+      handleTouchMove,
+      {
+        passive: false,
+      },
+    );
+
+    zone.addEventListener(
+      'touchend',
+      handleTouchEnd,
+      {
+        passive: true,
+      },
+    );
+
+    zone.addEventListener(
+      'touchcancel',
+      handleTouchCancel,
+      {
+        passive: true,
+      },
+    );
+
+    return () => {
+      zone.removeEventListener(
+        'touchstart',
+        handleTouchStart,
+      );
+
+      zone.removeEventListener(
+        'touchmove',
+        handleTouchMove,
+      );
+
+      zone.removeEventListener(
+        'touchend',
+        handleTouchEnd,
+      );
+
+      zone.removeEventListener(
+        'touchcancel',
+        handleTouchCancel,
+      );
+
+      touchStartRef.current = null;
+      touchTriggeredRef.current = false;
     };
   }, [globeHovered]);
 
@@ -687,7 +847,7 @@ export default function Journey() {
               {chapter.story}
             </p>
 
-            {/* Evidence — showing the progression instead of adding another paragraph */}
+            {/* Evidence */}
             <div className="mt-6 grid max-w-[410px] gap-1.5 sm:mt-7">
               {chapter.evidence.map((item, index) => (
                 <div
@@ -740,7 +900,10 @@ export default function Journey() {
               </button>
 
               <span className="ml-1 text-[7px] uppercase tracking-[0.16em] text-white/20 sm:ml-2 sm:text-[8px] sm:tracking-[0.22em]">
-                <span className="sm:hidden">use arrows</span>
+                <span className="sm:hidden">
+                  swipe or use arrows
+                </span>
+
                 <span className="hidden sm:inline">
                   or spin the globe
                 </span>
@@ -752,7 +915,7 @@ export default function Journey() {
         {/* CENTER — Globe */}
         <div
           ref={globeZoneRef}
-          className="order-1 relative mx-auto flex h-[min(78vw,315px)] w-full max-w-[650px] items-center justify-center sm:h-[380px] md:h-[440px] lg:order-2 lg:h-[560px]"
+          className="order-1 relative mx-auto flex h-[min(78vw,315px)] w-full max-w-[650px] touch-pan-y items-center justify-center sm:h-[380px] md:h-[440px] lg:order-2 lg:h-[560px]"
         >
           <div
             ref={globeVisualRef}
@@ -795,7 +958,7 @@ export default function Journey() {
                 />
 
                 <span className="sm:hidden">
-                  Use the arrows
+                  Swipe to travel
                 </span>
 
                 <span className="hidden sm:inline">
@@ -813,7 +976,7 @@ export default function Journey() {
                 }`}
               >
                 <span className="sm:hidden">
-                  Choose a chapter to move through the journey
+                  Swipe up or down to move through the journey
                 </span>
 
                 <span className="hidden sm:inline">
@@ -1052,7 +1215,7 @@ export default function Journey() {
               <span className="sm:hidden">
                 {globeHovered
                   ? 'active'
-                  : 'scroll'}
+                  : 'swipe'}
               </span>
 
               <span className="hidden sm:inline">
@@ -1075,7 +1238,7 @@ export default function Journey() {
         </div>
       </div>
 
-      {/* Continuation — no footer, no hard boundary */}
+      {/* Continuation */}
       <div className="relative z-10 overflow-hidden px-4 pb-28 pt-16 sm:px-6 sm:pb-32 sm:pt-20 md:px-8 md:pb-40 md:pt-28">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-transparent via-white/[0.006] to-transparent" />
 
@@ -1121,7 +1284,7 @@ export default function Journey() {
             </Link>
           </div>
 
-          {/* Small proof strip — gives the ending something tangible to leave behind */}
+          {/* Small proof strip */}
           <div className="mt-16 grid grid-cols-2 border-y border-white/[0.06] sm:grid-cols-4">
             {[
               ['01', 'BUILD', 'from idea to interface'],

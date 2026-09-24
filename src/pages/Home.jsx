@@ -26,10 +26,10 @@ let githubStatsPromise;
 
 function loadGithubStats() {
   if (!githubStatsPromise) {
-    githubStatsPromise = fetch('/api/github-stats')
+    githubStatsPromise = fetch("/api/github-stats")
       .then((res) => {
         if (!res.ok) {
-          throw new Error('Failed to fetch GitHub stats');
+          throw new Error("Failed to fetch GitHub stats");
         }
 
         return res.json();
@@ -148,16 +148,16 @@ function HeroPortrait() {
         <img
           src="/potrait1.png"
           alt="James"
-          className="absolute left-1/2 top-[51%] h-[96%] w-full min-w-[1000px] -translate-x-1/2 -translate-y-1/2 object-cover object-center opacity-[0.22] grayscale-[0.3] contrast-[0.82] brightness-[0.82] mix-blend-luminosity sm:min-w-[1100px]"
+          className="absolute left-1/2 top-[51%] h-[96%] w-full min-w-[1000px] -translate-x-1/2 -translate-y-1/2 object-cover object-center opacity-[0.3] grayscale-[0.15] contrast-[0.95] brightness-[0.9] mix-blend-luminosity sm:min-w-[1100px]"
         />
 
-        <div className="absolute inset-0 bg-gradient-to-r from-[#08090a] via-transparent to-[#08090a]/70" />
+        {/* Keep the portrait readable without competing with its
+            built-in visual split. These are deliberately soft. */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#08090a]/25 via-transparent to-[#08090a]/25" />
 
-        <div className="absolute inset-0 bg-gradient-to-b from-[#08090a]/65 via-transparent to-[#08090a]" />
+        <div className="absolute inset-x-0 bottom-0 h-[18%] bg-gradient-to-t from-[#08090a]/80 via-[#08090a]/25 to-transparent" />
 
-        <div className="absolute inset-x-0 bottom-0 h-[28%] bg-gradient-to-t from-[#08090a] via-[#08090a]/70 to-transparent" />
-
-        <div className="absolute inset-x-0 top-0 h-[18%] bg-gradient-to-b from-[#08090a] to-transparent" />
+        <div className="absolute inset-x-0 top-0 h-[10%] bg-gradient-to-b from-[#08090a]/45 to-transparent" />
       </motion.div>
     </div>
   );
